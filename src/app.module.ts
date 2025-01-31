@@ -19,6 +19,11 @@ import { PlacesModules } from '@/context/places/infrastructure/places.module';
     PlacesModules,
     MongooseModule.forRoot(
       `mongodb+srv://todo:${process.env.KEY_MONGO}@cluster0.i8kuny3.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`,
+      {
+        maxPoolSize: 10,
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
+      },
     ),
   ],
 })

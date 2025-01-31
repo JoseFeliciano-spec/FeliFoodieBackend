@@ -36,7 +36,7 @@ async function bootstrap() {
   app.enableCors();
 
   // Iniciar el servidor
-  await app.listen(process.env.PORT ?? 8080);
+  await app.listen(process.env.PORT || 4000);
 
   console.log(
     `La documentación de la API está disponible en: ${await app.getUrl()}/docs`,
