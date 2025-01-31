@@ -52,21 +52,24 @@ export class HistoryPlaceUseCases {
         throw new BadRequestException('User ID is required');
       }
 
+      if (pageSize > 100) {
+        throw new BadRequestException("Page size cannot exceed 100");
+      }
+  
       const validatedPageNo = Math.max(1, pageNo);
-      const validatedPageSize = Math.min(Math.max(1, pageSize), 100);
-      const skip = (validatedPageNo - 1) * validatedPageSize;
-
-      // Tipamos explícitamente el resultado de la consulta
-      const [documents, total] = await Promise.all([
-        this.historyPlaceModel
-          .find({ userId })
-          .sort({ accessedAt: -1 })
-          .skip(skip)
-          .limit(validatedPageSize)
-          .lean<HistoryPlaceDocument[]>()
-          .exec(),
-        this.historyPlaceModel.countDocuments({ userId }).exec(),
-      ]);
+      const validatedPageSize = Math.min(Math.max(1, pageSize), 100); // Máximo 100
+  
+      // Optimizar: Usar estimación de conteo si es posible
+      const total = await this.historyPlaceModel.countDocuments({ userId }).maxTimeMS(5000); // Timeout de 5s
+  
+      const documents = await this.historyPlaceModel
+        .find({ userId })
+        .sort({ accessedAt: -1 })
+        .skip((validatedPageNo - 1) * validatedPageSize)
+        .limit(validatedPageSize)
+        .lean() // Reduce memoria usando objetos planos
+        .maxTimeMS(5000) // Timeout de 5s
+        .exec();
 
       const totalPages = Math.ceil(total / validatedPageSize);
 
