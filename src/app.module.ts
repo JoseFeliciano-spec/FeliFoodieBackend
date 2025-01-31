@@ -4,7 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from '@/context/auth/infrastructure/auth.module';
 import { AuthGuard } from '@/context/shared/guards/auth.guard';
-import { TasksModules } from '@/context/tasks/infrastructure/task.module';
+import { PlacesModules } from '@/context/places/infrastructure/places.module';
 
 @Module({
   providers: [AuthGuard],
@@ -16,7 +16,7 @@ import { TasksModules } from '@/context/tasks/infrastructure/task.module';
       signOptions: { expiresIn: '24h' },
     }),
     AuthModule,
-    TasksModules,
+    PlacesModules,
     MongooseModule.forRoot(
       `mongodb+srv://todo:${process.env.KEY_MONGO}@cluster0.i8kuny3.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`,
     ),
