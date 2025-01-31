@@ -21,20 +21,20 @@ export class PlacesController {
     this.googleClient = new Client({});
   }
 
-  @Get('/places')
+  @Get('/browser-places')
   async getPaginatedPlaces(
     @Query('city') city: string,
-    @Query('place') place: string,
+    @Query('place') place: string = '',
     @Query('pageNo') pageNo: number = 1,
-    @Query('pageSize') pageSize: number = 10,
+    @Query('pageSize') pageSize: number = 60, // Increased default page size
   ) {
     try {
       let location = '';
-      if (city.includes('-')) {
-        const [lat, lng] = city.split('-').map(Number);
+      if (city.includes('@')) {
+        const [lat, lng] = city.split('@').map(Number);
         location = `${lat},${lng}`;
       } else {
-        // Obtener ID de la ciudad
+        // Get city ID
         const cityResponse = await this.googleClient.placeAutocomplete({
           params: {
             input: city,
@@ -48,7 +48,7 @@ export class PlacesController {
         if (!placeId)
           throw new Error(`No se encontró un place_id para ${city}`);
 
-        // Obtener coordenadas de la ciudad
+        // Get city coordinates
         const detailsResponse = await this.googleClient.placeDetails({
           params: {
             place_id: placeId,
@@ -62,17 +62,47 @@ export class PlacesController {
         location = `${coords.lat},${coords.lng}`;
       }
 
-      const offset = (pageNo - 1) * pageSize;
-      const nearbyResponse = await this.googleClient.placesNearby({
-        params: {
-          location,
-          radius: 10000, // Radio de 10km
-          keyword: place,
-          key: this.apiKey,
-        },
-      });
+      // Array to store all results
+      let allResults = [];
+      let pageToken = null;
+      let iterations = 0;
+      const MAX_ITERATIONS = 10; // Increased max iterations
 
-      const paginatedResults = nearbyResponse.data.results
+      // Perform multiple requests to get all results
+      do {
+        const nearbyResponse = await this.googleClient.placesNearby({
+          params: {
+            location,
+            radius: 20000, // Increased radius to 20km
+            keyword: place || undefined,
+            type: 'restaurant',
+            key: this.apiKey,
+            pagetoken: pageToken || undefined,
+          },
+        });
+
+        // Add results from this page
+        allResults = allResults.concat(nearbyResponse.data.results);
+
+        // Get the next page token
+        pageToken = nearbyResponse.data.next_page_token;
+
+        // Small pause to allow Google to process the token
+        if (pageToken) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+
+        iterations++;
+      } while (pageToken && iterations < MAX_ITERATIONS);
+
+      // Remove duplicate places based on place_id
+      const uniqueResults = Array.from(
+        new Map(allResults.map((place) => [place.place_id, place])).values(),
+      );
+
+      // Paginate the results
+      const offset = (pageNo - 1) * pageSize;
+      const paginatedResults = uniqueResults
         .slice(offset, offset + pageSize)
         .map((place) => ({
           placeId: place.place_id,
@@ -88,19 +118,20 @@ export class PlacesController {
 
       return {
         success: true,
-        data: paginatedResults,
-        message: 'Lugares obtenidos exitosamente',
-        pagination: {
+        message: 'Restaurantes obtenidos exitosamente',
+        data: {
           pageNo,
           pageSize,
-          totalResults: nearbyResponse.data.results.length,
+          data: paginatedResults,
+          totalResults: uniqueResults.length,
+          totalPages: Math.ceil(uniqueResults.length / pageSize),
         },
       };
     } catch (error) {
       return {
         success: false,
         error: error.toString(),
-        message: 'Error al obtener lugares',
+        message: 'Error al obtener restaurantes',
       };
     }
   }
@@ -336,6 +367,117 @@ export class PlacesController {
         success: false,
         error: error.toString(),
         message: 'Error obteniendo restaurantes',
+      };
+    }
+  }
+
+  @Get('/search-restaurant')
+  async searchRestaurant(@Query('search') search: string) {
+    try {
+      let placeId: string;
+
+      try {
+        await this.googleClient.placeDetails({
+          params: {
+            place_id: search,
+            key: this.apiKey,
+            fields: ['place_id'],
+          },
+        });
+        placeId = search;
+      } catch (error) {
+        // Si no es un ID válido, buscar por texto
+        const findPlaceResponse = await this.googleClient.findPlaceFromText({
+          params: {
+            input: search,
+            inputtype: 'textquery' as any,
+            fields: ['place_id', 'name', 'formatted_address', 'types'],
+            key: this.apiKey,
+            language: 'es' as any,
+          },
+        });
+
+        if (
+          !findPlaceResponse.data.candidates ||
+          findPlaceResponse.data.candidates.length === 0
+        ) {
+          return {
+            success: false,
+            message:
+              'No se encontró ningún restaurante con el término proporcionado.',
+          };
+        }
+
+        placeId = findPlaceResponse.data.candidates[0].place_id;
+      }
+
+      // Obtener detalles completos del lugar
+      const detailsResponse = await this.googleClient.placeDetails({
+        params: {
+          place_id: placeId,
+          key: this.apiKey,
+          language: 'es' as any,
+          fields: [
+            'name',
+            'formatted_address',
+            'geometry',
+            'types',
+            'rating',
+            'photos',
+            'reviews',
+            'price_level',
+            'website',
+            'opening_hours',
+            'user_ratings_total',
+          ],
+        },
+      });
+
+      const place = detailsResponse.data.result;
+
+      // Procesar fotos
+      const photos =
+        place.photos?.map((photo) => ({
+          photoReference: photo.photo_reference,
+          url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photo.photo_reference}&key=${this.apiKey}`,
+        })) || [];
+
+      // Procesar reseñas
+      const reviews =
+        place.reviews?.map((review) => ({
+          authorName: review.author_name,
+          rating: review.rating,
+          text: review.text,
+          relativeTimeDescription: review.relative_time_description,
+          profilePhotoUrl: review.profile_photo_url,
+        })) || [];
+
+      // Construir respuesta
+      const restaurantDetails = {
+        placeId: placeId,
+        name: place.name,
+        address: place.formatted_address,
+        location: place.geometry?.location,
+        types: place.types,
+        rating: place.rating,
+        priceLevel: this.getPriceLevel(place.price_level),
+        totalRatings: place.user_ratings_total,
+        website: place.website,
+        openingHours: place.opening_hours?.weekday_text,
+        photos: photos,
+        reviews: reviews,
+      };
+
+      return {
+        success: true,
+        data: restaurantDetails,
+        message: 'Restaurante encontrado exitosamente',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.toString(),
+        message: 'Error al buscar el restaurante',
       };
     }
   }

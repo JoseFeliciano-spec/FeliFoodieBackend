@@ -17,8 +17,6 @@ export class InMemoryUserRepository extends UserRepository {
 
   async getUserFromToken(token: string): Promise<any> {
     try {
-      // Find the user using the decoded sub (user id)
-      console.log(token);
       const user = await this.userModel.findOne({ _id: token });
 
       if (!user) {
