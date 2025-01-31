@@ -1,5 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { Client } from '@googlemaps/google-maps-services-js';
+import { ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger/dist';
 
 @Controller('v1/places')
 export class PlacesController {
@@ -22,6 +23,40 @@ export class PlacesController {
   }
 
   @Get('/browser-places')
+  @ApiOperation({
+    summary: 'Obtener lugares paginados',
+    description: 'Obtiene restaurantes paginados basados en ciudad y tipo de lugar'
+  })
+  @ApiQuery({ name: 'city', required: true, example: 'Bogotá, Colombia', description: 'Ciudad o coordenadas (@lat@lng)' })
+  @ApiQuery({ name: 'place', required: false, example: 'sushi', description: 'Tipo de establecimiento a buscar' })
+  @ApiQuery({ name: 'pageNo', required: false, example: 1, description: 'Número de página' })
+  @ApiQuery({ name: 'pageSize', required: false, example: 60, description: 'Resultados por página' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista paginada de restaurantes',
+    schema: {
+      example: {
+        success: true,
+        message: 'Restaurantes obtenidos exitosamente',
+        data: {
+          pageNo: 1,
+          pageSize: 60,
+          data: [{
+            placeId: 'ChIJK1l...',
+            name: 'Restaurante Ejemplo',
+            address: 'Calle 123',
+            location: { lat: 4.123, lng: -74.123 },
+            rating: 4.5,
+            photo: 'https://...',
+            types: ['restaurant', 'food']
+          }],
+          totalResults: 150,
+          totalPages: 3
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 500, description: 'Error del servidor' })
   async getPaginatedPlaces(
     @Query('city') city: string,
     @Query('place') place: string = '',
@@ -135,6 +170,28 @@ export class PlacesController {
   }
 
   @Get('/search')
+  @ApiOperation({
+    summary: 'Buscar ciudades',
+    description: 'Busca ciudades principales de Colombia o por término de búsqueda'
+  })
+  @ApiQuery({ name: 'search', required: false, example: 'Medellín', description: 'Término de búsqueda para ciudades' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de ciudades encontradas',
+    schema: {
+      example: {
+        success: true,
+        data: [{
+          cityId: 'ChIJdd...',
+          name: 'Bogotá',
+          country: 'Colombia',
+          fullName: 'Bogotá, Colombia'
+        }],
+        message: 'Ciudades encontradas exitosamente'
+      }
+    }
+  })
+  @ApiResponse({ status: 500, description: 'Error del servidor' })
   async searchCities(@Query('search') search: string) {
     try {
       // Si no hay término de búsqueda, devolver ciudades de Colombia
@@ -204,6 +261,33 @@ export class PlacesController {
   }
 
   @Get('/search-places')
+  @ApiOperation({
+    summary: 'Buscar lugares genéricos',
+    description: 'Busca cualquier tipo de lugar por término de búsqueda'
+  })
+  @ApiQuery({ name: 'search', required: true, example: 'Museo del Oro', description: 'Nombre del lugar a buscar' })
+  @ApiResponse({
+    status: 200,
+    description: 'Detalles de lugares encontrados',
+    schema: {
+      example: {
+        success: true,
+        data: [{
+          placeId: 'ChIJW5...',
+          name: 'Museo del Oro',
+          address: 'Cra. 6 #15-88',
+          location: { lat: 4.123, lng: -74.123 },
+          types: ['museum', 'tourist_attraction'],
+          rating: 4.8,
+          photo: 'https://...',
+          fullDescription: 'Museo del Oro, Bogotá, Colombia'
+        }],
+        message: 'Lugares encontrados exitosamente'
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Término de búsqueda requerido' })
+  @ApiResponse({ status: 500, description: 'Error del servidor' })
   async searchPlaces(@Query('search') search: string) {
     try {
       // Si no hay término de búsqueda, devolver un error
@@ -277,6 +361,38 @@ export class PlacesController {
   }
 
   @Get('/top-restaurants')
+  @Get('/top-restaurants')
+  @ApiOperation({
+    summary: 'Top restaurantes por ciudad',
+    description:
+      'Obtiene los 4 mejores restaurantes de las 5 principales ciudades de Colombia',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de restaurantes destacados',
+    schema: {
+      example: {
+        congrats: true,
+        data: [
+          {
+            ciudad: 'Bogotá',
+            restaurantes: [
+              {
+                nombre: 'Restaurante Gourmet',
+                calificacion: 4.9,
+                direccion: 'Zona G, Calle 70',
+                referencia: 'ChIJH7...',
+                imagen: 'https://...',
+                precio: 'Caro',
+              },
+            ],
+          },
+        ],
+        message: 'Top 4 restaurantes en las 5 principales ciudades de Colombia',
+      },
+    },
+  })
+  @ApiResponse({ status: 500, description: 'Error del servidor' })
   async getTopRestaurants() {
     try {
       const topCities = this.defaultColombiaCities.slice(0, 5); // Primeras 5 ciudades
@@ -370,6 +486,49 @@ export class PlacesController {
   }
 
   @Get('/search-restaurant')
+  @ApiOperation({
+    summary: 'Buscar restaurante específico',
+    description: 'Obtiene detalles completos de un restaurante por ID o nombre',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: true,
+    example: 'ChIJH7... o "El Cielo"',
+    description: 'ID del lugar o nombre del restaurante',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Detalles completos del restaurante',
+    schema: {
+      example: {
+        success: true,
+        data: {
+          placeId: 'ChIJH7...',
+          name: 'El Cielo',
+          address: 'Cl. 7 #43-203',
+          location: { lat: 6.123, lng: -75.123 },
+          types: ['restaurant', 'fine_dining'],
+          rating: 4.9,
+          priceLevel: 'Muy caro',
+          totalRatings: 1500,
+          website: 'https://elcielo.com',
+          openingHours: ['Lunes: 12:30–15:30, 19:00–23:00'],
+          photos: [{ url: 'https://...' }],
+          reviews: [
+            {
+              authorName: 'Juan Pérez',
+              rating: 5,
+              text: 'Experiencia increíble...',
+              relativeTimeDescription: 'hace 2 meses',
+            },
+          ],
+        },
+        message: 'Restaurante encontrado exitosamente',
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Restaurante no encontrado' })
+  @ApiResponse({ status: 500, description: 'Error del servidor' })
   async searchRestaurant(@Query('search') search: string) {
     try {
       let placeId: string;
