@@ -68,12 +68,11 @@ export class PlacesController {
       let iterations = 0;
       const MAX_ITERATIONS = 10; // Increased max iterations
 
-      // Perform multiple requests to get all results
       do {
         const nearbyResponse = await this.googleClient.placesNearby({
           params: {
             location,
-            radius: 20000, // Increased radius to 20km
+            radius: 20000,
             keyword: place || undefined,
             type: 'restaurant',
             key: this.apiKey,
@@ -81,17 +80,16 @@ export class PlacesController {
           },
         });
 
-        // Add results from this page
-        allResults = allResults.concat(nearbyResponse.data.results);
+        allResults = nearbyResponse.data.results; // Solo mantén los resultados actuales
 
-        // Get the next page token
         pageToken = nearbyResponse.data.next_page_token;
 
-        // Small pause to allow Google to process the token
         if (pageToken) {
           await new Promise((resolve) => setTimeout(resolve, 2000));
         }
 
+        // Rompe el loop si es la página solicitada
+        if (iterations === pageNo - 1) break;
         iterations++;
       } while (pageToken && iterations < MAX_ITERATIONS);
 
