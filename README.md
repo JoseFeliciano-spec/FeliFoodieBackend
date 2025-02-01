@@ -1,144 +1,125 @@
-# Proyecto de Gestión de Tareas en NestJS (FELITAKS)
+# Felifoodie-Backend 🍴
 
-**Enlace de la API:** [https://todo-backend-nest-jjq1.onrender.com](https://todo-backend-nest-jjq1.onrender.com)
-**Enlace de la DOCUMENTACIÓN DE SWAGGER:** [https://todo-backend-nest-jjq1.onrender.com](https://todo-backend-nest-jjq1.onrender.com/docs)
+```API Desplegada:``` [https://felifoodiebackend-1.onrender.com](https://felifoodiebackend-1.onrender.com)  
+```Documentación Swagger:``` [https://felifoodiebackend-1.onrender.com/docs](https://felifoodiebackend-1.onrender.com/docs)
 
 ## Descripción
+Backend para un sistema de recomendación de restaurantes construido con ```NestJS```. Ofrece funcionalidades clave como:  
+- 🛠️ Autenticación segura mediante JWT.  
+- 🔍 Búsqueda inteligente de restaurantes usando APIs externas.  
+- 📚 Historial de búsquedas persistente y accesible.  
+- 🚀 Arquitectura modular siguiendo prácticas de código limpio y escalable.
 
-Este proyecto es una API de gestión de tareas construida con NestJS, diseñada para ofrecer funcionalidades básicas de creación, actualización, eliminación y consulta de tareas. El objetivo de este sistema es facilitar a los usuarios la organización de sus tareas, permitiendo asignarles estados y fechas de vencimiento. La API sigue el enfoque de arquitectura limpia y utiliza prácticas recomendadas para garantizar la escalabilidad y mantenibilidad del código. Además, se ha integrado MongoDB como base de datos para el almacenamiento de datos y se utiliza JWT (JSON Web Token) para la autenticación y autorización de usuarios.
+---
 
-## Características
+## Características Principales
 
-- **Registro de Usuarios**: Permite la creación de nuevos usuarios con validación de datos.
-- **Autenticación**: Implementa un sistema de inicio de sesión que asegura el acceso a los recursos protegidos.
-- **Gestión de Tareas**: Permite crear, leer, actualizar y eliminar tareas.
-- **Validaciones**: Utiliza `class-validator` para garantizar que los datos enviados en las solicitudes cumplan con los requisitos establecidos.
+### 🔐 Autenticación de Usuarios
+- Registro e inicio de sesión con validación de datos.  
+- Protección de endpoints mediante tokens JWT.
 
-## Endpoints
+### 🍽️ Gestión de Restaurantes
+- Búsqueda por nombre, ciudad o categoría.  
+- Listado de restaurantes destacados.  
+- Integración con APIs de geolocalización (simulada o real).
 
-#### Registro de Usuario
+### 📅 Historial de Búsquedas
+- Almacenamiento automático de búsquedas realizadas.  
+- Consulta paginada del historial del usuario.
 
-- **POST** `/v1/user/register`
-  - **Descripción**: Crea un nuevo usuario en el sistema.
-  - **Request Body**:
-    ```json
+---
+
+## Endpoints Clave
+
+### Autenticación
+| Método | Endpoint           | Descripción                     |
+|--------|--------------------|---------------------------------|
+| POST   | '/v1/user/register'| Registra un nuevo usuario.      |
+| POST   | '/v1/user/login'   | Genera un token JWT para acceso.|
+
+```Ejemplo de Registro:```
+```
+// POST /v1/user/register
+{
+  "email": "usuario@ejemplo.com",
+  "password": "contraseñaSegura123",
+  "name": "Juan Pérez"
+}
+```
+
+```Respuesta Exitosa (201):```
+```
+{
+  "data": {
+    "id": "uuid-example",
+    "email": "usuario@ejemplo.com",
+    "name": "Juan Pérez"
+  },
+  "message": "Usuario creado exitosamente"
+}
+```
+
+---
+
+### Búsqueda de Restaurantes
+| Método | Endpoint                       | Descripción                                  |
+|--------|--------------------------------|---------------------------------------------|
+| GET    | '/v1/places/search-restaurant'| Busca restaurantes por término (nombre, ciudad, etc.). |
+| GET    | '/v1/places/top-restaurants'  | Retorna los restaurantes mejor valorados.   |
+
+```Ejemplo de Búsqueda:```
+```
+GET /v1/places/search-restaurant?search=sushi
+```
+
+```Respuesta Exitosa (200):```
+```
+{
+  "data": [
     {
-      "email": "john.doe@example.com",
-      "name": "John Doe",
-      "password": "yourpassword"
+      "name": "Sushi Bar",
+      "address": "Calle Principal 123",
+      "rating": 4.8,
+      "category": "Japonés"
     }
-    ```
-  - **Response**:
-    - **201**: Usuario creado exitosamente.
-    - **400**: Error en la creación del usuario.
+  ]
+}
+```
 
-#### Inicio de Sesión
+---
 
-- **POST** `/v1/user/login`
-  - **Descripción**: Inicia sesión de un usuario existente.
-  - **Request Body**:
-    ```json
-    {
-      "email": "john.doe@example.com",
-      "password": "yourpassword"
-    }
-    ```
-  - **Response**:
-    - **200**: Inicio de sesión exitoso.
-    - **401**: Credenciales inválidas.
+## Configuración ⚙️
 
-#### Gestión de Tareas
-
-- **POST** `/tasks`
-  - **Descripción**: Crear una nueva tarea.
-  - **Request Body**:
-    ```json
-    {
-      "title": "Hacer la compra",
-      "description": "Comprar frutas y verduras",
-      "status": "pending",
-      "dueDate": "2024-10-30T12:00:00Z"
-    }
-    ```
-  - **Response**:
-    - **201**: Tarea creada exitosamente.
-    - **400**: Error en la creación de la tarea.
-
-- **GET** `/tasks`
-  - **Descripción**: Listar todas las tareas del usuario autenticado.
-  - **Response**:
-    - **200**: Retorna una lista de tareas.
-
-- **GET** `/tasks/:id`
-  - **Descripción**: Ver los detalles de una tarea específica.
-  - **Response**:
-    - **200**: Retorna los detalles de la tarea especificada.
-    - **404**: Tarea no encontrada.
-
-- **PUT** `/tasks/:id`
-  - **Descripción**: Editar una tarea.
-  - **Request Body**:
-    ```json
-    {
-      "title": "Hacer la compra",
-      "description": "Comprar frutas y verduras y lácteos",
-      "status": "in-progress",
-      "dueDate": "2024-10-30T12:00:00Z"
-    }
-    ```
-  - **Response**:
-    - **200**: Tarea actualizada exitosamente.
-    - **400**: Error en la actualización de la tarea.
-
-- **DELETE** `/tasks/:id`
-  - **Descripción**: Eliminar una tarea.
-  - **Response**:
-    - **204**: Tarea eliminada exitosamente.
-    - **400**: Error en la eliminación de la tarea.
-    - **404**: Tarea no encontrada.
-
-## Variables de Entorno
-
-Para ejecutar el proyecto, es necesario configurar las siguientes variables de entorno en un archivo `.env` en la raíz del proyecto:
-
-```plaintext
+### Variables de Entorno
+Crea un archivo '.env' en la raíz con:
+```
 JWT_SECRET=todo-list
-KEY_MONGO=Prueba
- ```
+API_GOOGLE=<API KEY DE GOOGLE>
+KEY_MONGO=<API KEY DE MONGO>
+```
 
-# Proyecto de Gestión de Tareas
-
-Este proyecto utiliza NestJS para la gestión de la autenticación y la conexión a la base de datos MongoDB. Asegúrate de tener configurado tu entorno de desarrollo para utilizar las variables de entorno correctamente.
-
-## Requisitos
-
-- Node.js >= 14.x
-- NestJS >= 8.x
-- MongoDB o cualquier base de datos compatible
-
-## Instalación
-
+### Instalación
 1. Clona el repositorio:
-
-   ```bash
-     git clone https://github.com/tu-usuario/tu-repositorio.git
-    ```
-
-2. Instala las dependencias:
-
-   ```'bash
-     cd tu-repositorio
-     npm install
-    ```
-
-3. Configura las variables de entorno en un archivo '.env'.
-
-4. Inicia la aplicación:
-
-   ```bash
-   npm run start
+   ```
+   git clone https://github.com/JoseFeliciano-spec/FeliFoodieBackend.git
+   ```
+2. Instala dependencias:
+   ```
+   npm install
+   ```
+3. Inicia el servidor:
+   ```
+   npm run start:dev  # Modo desarrollo
    ```
 
-## Conclusión
+---
 
-Este proyecto de gestión de tareas es un buen ejemplo de cómo construir aplicaciones escalables y mantenibles usando NestJS. La implementación puede servir como base para desarrollos futuros y ampliaciones de funcionalidades.
+## Tecnologías Utilizadas
+- ```Backend:``` NestJS, MongoDB, JWT, Swagger.  
+- ```Calidad de Código:``` ESLint, Prettier.  
+
+---
+
+✉️ ```Contacto:``` [janayasimanca@gmail.com](mailto:janayasimanca@gmail.com)  
+🔗 ```Frontend:``` [Repositorio](https://github.com/JoseFeliciano-spec/FeliFoodieFrontend) | [Demo](https://feli-foodie-frontend.vercel.app)  
+📜 ```Licencia:``` MIT
